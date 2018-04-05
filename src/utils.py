@@ -3,9 +3,10 @@ import dateutil
 import re
 import string
 
+import config
 # scrub the punctuation from a string
 def scrub_punctuation(s):
-    exclude = set('!"#$%&\'()*,.:;<=>?@[]^_`{|}~')
+    exclude = set(config.PUNCTUATION)
     return ''.join(ch for ch in s if ch not in exclude)
 
 # If it gets a match, return that datetime object, otherwise return None
