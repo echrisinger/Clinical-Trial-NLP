@@ -1,9 +1,14 @@
 import datetime
 import dateutil
+import nltk
 import re
 import string
 
+from collections import Counter
+from nltk.stem.porter import PorterStemmer
+
 import config
+
 # scrub the punctuation from a string
 def scrub_punctuation(s):
     exclude = set(config.PUNCTUATION)
@@ -46,3 +51,15 @@ def get_metadata(patient_files):
             p_file.entries[i].date = r_dates[i]
         pfiles_meta.append(p_file)
     return pfiles_meta
+
+def stem_tokens(tokens, stemmer):
+    stemmed = []
+    for item in tokens:
+        stemmed.append(stemmer.stem(item))
+    return stemmed
+
+def filter_words(tokens):
+    filtered = [w for w in tokens if not w in nltk.corpus.stopwords.words('english')]
+    stemmer = PorterStemmer()
+    stemmed = stem_tokens(filtered, stemmer)
+    count = Counter(stemmed)

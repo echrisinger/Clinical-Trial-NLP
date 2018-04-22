@@ -17,7 +17,6 @@ column_titles = ["ABDOMINAL", "ADVANCED-CAD", "ALCOHOL-ABUSE", "ASP-FOR-MI", "CR
 def get_files(path='../res/train'):
     files = []
     for (dirpath, dirnames, filenames) in os.walk(path, topdown=False):
-
         # TODO: should have train_path at start
         files.extend([dirpath+'/'+name for name in filenames])
         break
@@ -42,6 +41,30 @@ def group_entries(raw_words):
         p_file = PatientFile(raw_words, entries=[Entry(text) for text in entries[:-1]])
         patient_files.append(p_file)
     return patient_files
+
+def get_train_path():
+    parser = argparse.ArgumentParser(description='Parse dataset params')
+    parser.add_argument('train_path', type=str, help='path to the training data directory locally')
+    args = parser.parse_args()
+    return args.train_path
+
+def get_Xy():
+    train_path = get_train_path()
+    files = get_files(train_path)
+
+    raw_X = get_raw_words(files)
+
+    # break down the strings into individual files for a specific patient
+    patient_files = group_entries(raw_X)
+    pfiles_meta = get_metadata(patient_files)
+    
+    # scrub the punctuation for each individual file
+    for p_i, p_file in enumerate(pfiles_meta):
+        for i, entry in enumerate(p_file.entries):
+            pfiles_meta[p_i].entries[i].text = scrub_punctuation(entry.raw_text).lower()
+
+    y = get_labels(files)
+    return pfiles_meta, y
 
 def vectorize_files(patient_files):
     # add all the words to a set and sort it
@@ -140,29 +163,8 @@ def visualize_original_labels(label_sums):
     plt.xticks(rotation=90)
     plt.show()
 
-
-
 def main():
-    parser = argparse.ArgumentParser(description='Parse dataset params')
-    parser.add_argument('train_path', type=str, help='path to the training data directory locally')
-    args = parser.parse_args()
-
-    train_path = args.train_path
-    files = get_files(train_path)
-
-    raw_X = get_raw_words(files)
-
-    # break down the strings into individual files for a specific patient
-    patient_files = group_entries(raw_X)
-    pfiles_meta = get_metadata(patient_files)
-    
-    # scrub the punctuation for each individual file
-    for p_i, p_file in enumerate(pfiles_meta):
-        for i, entry in enumerate(p_file.entries):
-            pfiles_meta[p_i].entries[i].text = scrub_punctuation(entry.raw_text)
-    
-    print pfiles_meta[0].entries[0].text
-    y = get_labels(files)
+    _, y = get_Xy()
 
     # Bar chart of met/not met counts for each selection criterion
     label_sums = met_not_met_counts(y)
