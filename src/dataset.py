@@ -7,6 +7,7 @@ import re
 import string 
 import xml.etree.ElementTree as ET
 
+import NLPTest
 
 from utils import *
 from patient import *
@@ -164,7 +165,11 @@ def visualize_original_labels(label_sums):
     plt.show()
 
 def main():
-    _, y = get_Xy()
+    X, y = get_Xy()
+    # print "X is: ", X[0].raw_text
+    # print "y is: ", y
+
+    NLPTest.test(X, y)
 
     # Bar chart of met/not met counts for each selection criterion
     label_sums = met_not_met_counts(y)
