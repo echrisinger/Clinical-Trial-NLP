@@ -6,10 +6,18 @@ import os
 import re
 import string 
 import xml.etree.ElementTree as ET
+import nltk
 
+from nltk.probability import FreqDist
+from nltk.classify import SklearnClassifier
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
 
 from utils import *
 from patient import *
+
 
 column_titles = ["ABDOMINAL", "ADVANCED-CAD", "ALCOHOL-ABUSE", "ASP-FOR-MI", "CREATININE", "DIETSUPP-2MOS", "DRUG-ABUSE", "ENGLISH", "HBA1C", "KETO-1YR", "MAJOR-DIABETES", "MAKES-DECISIONS", "MI-6MOS"]
 
@@ -151,6 +159,7 @@ def main():
     files = get_files(train_path)
 
     raw_X = get_raw_words(files)
+    y = get_labels(files)
 
     # break down the strings into individual files for a specific patient
     patient_files = group_entries(raw_X)
@@ -161,8 +170,42 @@ def main():
         for i, entry in enumerate(p_file.entries):
             pfiles_meta[p_i].entries[i].text = scrub_punctuation(entry.raw_text)
     
-    print pfiles_meta[0].entries[0].text
-    y = get_labels(files)
+    #print pfiles_meta[0].entries[0].text
+
+
+
+
+    # code taken from: https://stackoverflow.com/questions/10098533/implementing-bag-of-words-naive-bayes-classifier-in-nltk
+    pipeline = Pipeline([('tfidf', TfidfTransformer()),
+                         ('chi2', SelectKBest(chi2, k='all')),
+                         ('nb', MultinomialNB())])
+    classif = SklearnClassifier(pipeline)
+
+    for i in range(13):
+        pos = []
+        neg = []
+        for fileNum in range(len(files)):
+            if y[fileNum][i] == -1:
+                neg.append(FreqDist(pfiles_meta[fileNum].entries[-1].text.split()))
+            if y[fileNum][i] == 1:
+                pos.append(FreqDist(pfiles_meta[fileNum].entries[-1].text.split()))
+
+
+        add_label = lambda lst, lab: [(x, lab) for x in lst]
+        pos_split = len(pos)*4/5
+        neg_split = len(neg)*4/5
+        print "pos_split: ", pos_split
+        print "neg_split: ", neg_split
+        classif.train(add_label(pos[:pos_split], 'pos') + add_label(neg[:neg_split], 'neg'))
+
+        l_pos = np.array(classif.classify_many(pos[pos_split:]))
+        l_neg = np.array(classif.classify_many(neg[neg_split:]))
+        print i, ": Confusion matrix:\n%d\t%d\n%d\t%d" % (
+                  (l_pos == 'pos').sum(), (l_pos == 'neg').sum(),
+                  (l_neg == 'pos').sum(), (l_neg == 'neg').sum())
+
+
+    
 
     # Bar chart of met/not met counts for each selection criterion
     label_sums = met_not_met_counts(y)
