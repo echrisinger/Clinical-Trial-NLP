@@ -8,12 +8,16 @@ import string
 import xml.etree.ElementTree as ET
 import nltk
 
+
 from nltk.probability import FreqDist
 from nltk.classify import SklearnClassifier
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
+
+import NLPTest
+
 
 from utils import *
 from patient import *
@@ -228,8 +232,11 @@ def main():
 
 
     
+    X, y = get_Xy()
+    # print "X is: ", X[0].raw_text
+    # print "y is: ", y
 
-    _, y = get_Xy()
+    NLPTest.test(X, y)
 
 
     # Bar chart of met/not met counts for each selection criterion
