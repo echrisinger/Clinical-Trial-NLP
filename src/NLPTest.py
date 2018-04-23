@@ -27,7 +27,7 @@ def test(X, y):
 
 	criterion = ["ABDOMINAL", "ADVANCED-CAD", "ALCOHOL-ABUSE", "ASP-FOR-MI", "CREATININE", "DIETSUPP-2MOS", "DRUG-ABUSE", "ENGLISH", "HBA1C", "KETO-1YR", "MAJOR-DIABETES", "MAKES DECISIONS", "MI-6MOS"]
 
-	for criteriaIndex in range(len(criterion)):
+	for criteriaIndex in range(3):
 		documents = poop(X, y, criteriaIndex)
 		# Create and split data set
 		print "creating datasets..."
