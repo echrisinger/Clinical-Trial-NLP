@@ -199,44 +199,12 @@ def main():
     #print pfiles_meta[0].entries[0].text
 
 
-
-
-    # code taken from: https://stackoverflow.com/questions/10098533/implementing-bag-of-words-naive-bayes-classifier-in-nltk
-    pipeline = Pipeline([('tfidf', TfidfTransformer()),
-                         ('chi2', SelectKBest(chi2, k='all')),
-                         ('nb', MultinomialNB())])
-    classif = SklearnClassifier(pipeline)
-
-    for i in range(13):
-        pos = []
-        neg = []
-        for fileNum in range(len(files)):
-            if y[fileNum][i] == -1:
-                neg.append(FreqDist(pfiles_meta[fileNum].entries[-1].text.split()))
-            if y[fileNum][i] == 1:
-                pos.append(FreqDist(pfiles_meta[fileNum].entries[-1].text.split()))
-
-
-        add_label = lambda lst, lab: [(x, lab) for x in lst]
-        pos_split = len(pos)*4/5
-        neg_split = len(neg)*4/5
-        print "pos_split: ", pos_split
-        print "neg_split: ", neg_split
-        classif.train(add_label(pos[:pos_split], 'pos') + add_label(neg[:neg_split], 'neg'))
-
-        l_pos = np.array(classif.classify_many(pos[pos_split:]))
-        l_neg = np.array(classif.classify_many(neg[neg_split:]))
-        print i, ": Confusion matrix:\n%d\t%d\n%d\t%d" % (
-                  (l_pos == 'pos').sum(), (l_pos == 'neg').sum(),
-                  (l_neg == 'pos').sum(), (l_neg == 'neg').sum())
-
-
     
     X, y = get_Xy()
     # print "X is: ", X[0].raw_text
     # print "y is: ", y
 
-    NLPTest.test(X, y)
+    NLPTest.test_v2(X, y)
 
 
     # Bar chart of met/not met counts for each selection criterion
