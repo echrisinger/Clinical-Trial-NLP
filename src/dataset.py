@@ -208,8 +208,8 @@ def main():
 
 
     # Bar chart of met/not met counts for each selection criterion
-    label_sums = met_not_met_counts(y)
-    visualize_original_labels(label_sums)
+    #label_sums = met_not_met_counts(y)
+    #visualize_original_labels(label_sums)
 
 
 if __name__ == "__main__":

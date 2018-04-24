@@ -19,7 +19,7 @@ def tfidf_tokenizer(text):
 
 def partition_files():
     pfiles, y = get_Xy()
-    X_train, X_test, y_train, y_test = train_test_split(pfiles, y, test_size=0.95)
+    X_train, X_test, y_train, y_test = train_test_split(pfiles, y, test_size=0.2)
     return X_train, X_test, y_train, y_test
 
 
