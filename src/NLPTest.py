@@ -55,7 +55,7 @@ def test_v2(X, y):
 	trainingTestSplitIndex = 161 	# 80% of 202 files, rounded down
 	numFeatures = 1000 				# number of important words to keep
 	
-	for criteriaIndex in range(len(criterion)):
+	for criteriaIndex in [4, 5, 10]:
 		print "criterion: ", criterion[criteriaIndex]
 
 		all_words = []
@@ -87,7 +87,8 @@ def test_v2(X, y):
 		testing_set = featuresets[trainingTestSplitIndex:]
 
 		classifier = nltk.NaiveBayesClassifier.train(training_set)
-		print "Naive Bayes Algorithm accuracy: ", nltk.classify.accuracy(classifier, testing_set)
+		print "Naive Bayes Algorithm training accuracy: ", nltk.classify.accuracy(classifier, training_set)
+		print "Naive Bayes Algorithm test accuracy: ", nltk.classify.accuracy(classifier, testing_set)
 		classifier.show_most_informative_features(15)
 
 
