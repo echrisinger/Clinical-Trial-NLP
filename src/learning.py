@@ -77,6 +77,8 @@ def main():
             
             f_svc.write('label #: {}'.format(column_titles[label]))
             clf = SVC(C=1, kernel='rbf')
+            if not labeled_y.__contains__(0):
+                continue
             clf.fit(tfs, labeled_y)
             
             test_labels = [y_test[k][label] for k in range(len(y_test))]
