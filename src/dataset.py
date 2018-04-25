@@ -6,11 +6,22 @@ import os
 import re
 import string 
 import xml.etree.ElementTree as ET
+import nltk
+
+
+from nltk.probability import FreqDist
+from nltk.classify import SklearnClassifier
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
 
 import NLPTest
 
+
 from utils import *
 from patient import *
+
 
 column_titles = ["ABDOMINAL", "ADVANCED-CAD", "ALCOHOL-ABUSE", "ASP-FOR-MI", "CREATININE", "DIETSUPP-2MOS", "DRUG-ABUSE", "ENGLISH", "HBA1C", "KETO-1YR", "MAJOR-DIABETES", "MAKES-DECISIONS", "MI-6MOS"]
 
@@ -165,15 +176,40 @@ def visualize_original_labels(label_sums):
     plt.show()
 
 def main():
+
+    parser = argparse.ArgumentParser(description='Parse dataset params')
+    parser.add_argument('train_path', type=str, help='path to the training data directory locally')
+    args = parser.parse_args()
+
+    train_path = args.train_path
+    files = get_files(train_path)
+
+    raw_X = get_raw_words(files)
+    y = get_labels(files)
+
+    # break down the strings into individual files for a specific patient
+    patient_files = group_entries(raw_X)
+    pfiles_meta = get_metadata(patient_files)
+    
+    # scrub the punctuation for each individual file
+    for p_i, p_file in enumerate(pfiles_meta):
+        for i, entry in enumerate(p_file.entries):
+            pfiles_meta[p_i].entries[i].text = scrub_punctuation(entry.raw_text)
+    
+    #print pfiles_meta[0].entries[0].text
+
+
+    
     X, y = get_Xy()
     # print "X is: ", X[0].raw_text
     # print "y is: ", y
 
-    NLPTest.test(X, y)
+    NLPTest.test_v2(X, y)
+
 
     # Bar chart of met/not met counts for each selection criterion
-    label_sums = met_not_met_counts(y)
-    visualize_original_labels(label_sums)
+    #label_sums = met_not_met_counts(y)
+    #visualize_original_labels(label_sums)
 
 
 if __name__ == "__main__":
