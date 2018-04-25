@@ -63,3 +63,9 @@ def filter_words(tokens):
     stemmer = PorterStemmer()
     stemmed = stem_tokens(filtered, stemmer)
     count = Counter(stemmed)
+
+def concat_entries(pfiles):
+    cat_lpfiles = []
+    for pfile in pfiles:
+        cat_lpfiles.append(reduce (lambda x, y: x+' '+y, [entry.text for entry in pfile.entries]))
+    return cat_lpfiles

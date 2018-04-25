@@ -43,14 +43,14 @@ def group_entries(raw_words):
         patient_files.append(p_file)
     return patient_files
 
-def get_train_path():
+def parse_args():
     parser = argparse.ArgumentParser(description='Parse dataset params')
+    parser.add_argument('--n-labels', type=int, default=config.NUM_LABELS, help='number of classifiers to run testing on')
     parser.add_argument('train_path', type=str, help='path to the training data directory locally')
     args = parser.parse_args()
-    return args.train_path
+    return args
 
-def get_Xy():
-    train_path = get_train_path()
+def get_Xy(train_path):
     files = get_files(train_path)
 
     raw_X = get_raw_words(files)

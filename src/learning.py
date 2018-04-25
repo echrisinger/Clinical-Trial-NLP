@@ -5,10 +5,11 @@ nltk.download('stopwords')
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
-from dataset import get_Xy
+from dataset import get_Xy, parse_args
 from nltk.stem import *
+from sklearn.svm import SVC
 
-from utils import stem_tokens
+from utils import stem_tokens, concat_entries
 import config
 
 def tfidf_tokenizer(text):
@@ -17,27 +18,17 @@ def tfidf_tokenizer(text):
     stems = stem_tokens(filtered, PorterStemmer())
     return stems
 
-def partition_files():
-    pfiles, y = get_Xy()
-    X_train, X_test, y_train, y_test = train_test_split(pfiles, y, test_size=0.95)
-    return X_train, X_test, y_train, y_test
-
-
-def apply_tfidf(pfiles, y):
+def apply_tfidf_label(pfiles, y, label=0):
     tfidf = TfidfVectorizer(tokenizer=tfidf_tokenizer, stop_words='english')
-    arr_of_postfs = []
-    arr_of_negtfs = []
-    #config.NUM_LABELS
-    for label in range(2):
-        pos_pfiles, pos_y = zip(*[(pfile, y[i]) for i, pfile in enumerate(pfiles) if y[i][label] == 1])
-        neg_pfiles, neg_y = zip(*[(pfile, y[i]) for i, pfile in enumerate(pfiles) if y[i][label] == -1])
-        
-        pos_text = [entry.text for entry in pfile.entries for pfile in pos_pfiles]
-        arr_of_postfs += [tfidf.fit_transform(pos_text)]
+    
+    # Get the labeled pfiles that are -1/1 for the label
+    l_pfiles, y = zip(*[(pfile, y[i]) for i, pfile in enumerate(pfiles) if y[i][label] == 1 or y[i][label] == -1])
+    # Get each patient's files into one big string, and make a list of them
+    cat_lpfiles = concat_entries(l_pfiles)
 
-        neg_text = [entry.text for entry in pfile.entries for pfile in neg_pfiles]
-        arr_of_negtfs += [tfidf.fit_transform(neg_text)]
-    return tfidf
+    # Fit the tfidf
+    tfs = tfidf.fit_transform(cat_lpfiles)
+    return tfidf, tfs, y
 
 def top_tfidf_feats(row, features, top_n):
     topn_ids = np.argsort(row)[::-1][:top_n]
@@ -47,27 +38,45 @@ def top_tfidf_feats(row, features, top_n):
     print top_feats
     print top_names
     print top_fracs
-        
+    
 def main():
-    X_train, X_test, y_train, y_test = partition_files()
-    tfidf = apply_tfidf(X_train, y_train)
+    args = parse_args()
+    pfiles, y = get_Xy(args.train_path)
+    X_train, X_test, y_train, y_test = train_test_split(pfiles, y, test_size=0.1)
 
-    #intuition gaining
-    test_one = X_train[0].raw_text
-    response = tfidf.transform(test_one)
-    print "original array", response
-    response1 = response[0]
-    print "shape is...", response.shape
-    response_1 = np.squeeze(response1.toarray())
-    feature_names = tfidf.get_feature_names()
-    top_tfidf_feats(response_1, feature_names, 20)
+    for label in range(args.n_labels):
+        
+        tfidf = TfidfVectorizer(tokenizer=tfidf_tokenizer, stop_words='english')
+        
+        # Get the labeled pfiles that are -1/1 for the label
+        labeled_train_files, labeled_y = zip(*[(pfile, y_train[i][label]) for i, pfile in enumerate(X_train) if y_train[i][label] == 1 or y_train[i][label] == -1])
+        labeled_y = list(labeled_y)
+        for i in range(len(labeled_y)):
+            if labeled_y[i] < 0:
+                labeled_y[i] = 0
 
-#top_twenty = top_tfidf_feats(response, feature_names, 20)
-    #print top_twenty
-    #for col in response.nonzero()[1]:
-#print feature_names[col], " - ", response[0, col]
+        # Get each patient's files into one big string, and make a list of them
+        cat_train_files = concat_entries(labeled_train_files)
+        cat_test_files  = concat_entries(X_test)
 
+        cat_pfiles = concat_entries(pfiles)
+        
+        # Fit the tfidf
+        tfidf.fit(cat_pfiles)
+        tfs = tfidf.transform(cat_train_files).toarray()
 
+        clf = SVC(C=1.0, kernel='rbf')
+        clf.fit(tfs, labeled_y)
+        
+        test_labels = [y_test[i][label] for i in range(len(y_test))]
+        test_tfs    = tfidf.transform(cat_test_files).toarray()
+
+        for i in range(len(test_labels)):
+            if test_labels[i] < 0:
+                test_labels[i] = 0
+                
+        acc = clf.score(test_tfs, test_labels)
+        print 'label {} accuracy is {}'.format(label, acc)
 
 
 if __name__ == "__main__":
