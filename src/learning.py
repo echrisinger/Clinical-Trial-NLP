@@ -34,50 +34,49 @@ def apply_tfidf_label(pfiles, y, label=0):
     tfs = tfidf.fit_transform(cat_lpfiles)
     return tfidf, tfs, y
 
-def top_tfidf_feats(row, features, top_n):
-    topn_ids = np.argsort(row)[::-1][:top_n]
-    top_feats = [(features[i], row[i]) for i in topn_ids]
-    top_names = [x[0] for x in top_feats]
-    top_fracs = [x[1] for x in top_feats]
-    print top_feats
-    print top_names
-    print top_fracs
-    
 def main():
     args = parse_args()
     pfiles, y = get_Xy(args.train_path)
-    X_train, X_test, y_train, y_test = train_test_split(pfiles, y, test_size=0.1)
+    totals = {}
+    totals['C'] = 1
+    totals['accuracy'] = [0 for _ in range(13)]
+    totals['f1']  = [0 for _ in range(13)]
+    totals['auroc'] = [0 for _ in range(13)]
+    totals['precision'] = [0 for _ in range(13)]
+    totals['sensitivity'] = [0 for _ in range(13)]
+    totals['specificity'] = [0 for _ in range(13)]
 
-    label_scores = [{} for _ in range(config.NUM_LABELS)]
+    f_svc = open('svc_results.txt', "a+")
+    trials = 2
+    for k in range(trials):
+        X_train, X_test, y_train, y_test = train_test_split(pfiles, y, test_size=0.9)
+        label_scores = [{} for _ in range(config.NUM_LABELS)]
+        for label in range(args.n_labels):
+            
+            tfidf = TfidfVectorizer(tokenizer=tfidf_tokenizer, stop_words='english')
+            
+            # Get the labeled pfiles that are -1/1 for the label
+            labeled_train_files, labeled_y = zip(*[(pfile, y_train[i][label]) for i, pfile in enumerate(X_train) if y_train[i][label] == 1 or y_train[i][label] == -1])
+            labeled_y = list(labeled_y)
+            for i in range(len(labeled_y)):
+                if labeled_y[i] < 0:
+                    labeled_y[i] = 0
 
-    for label in range(args.n_labels):
-        
-        tfidf = TfidfVectorizer(tokenizer=tfidf_tokenizer, stop_words='english')
-        
-        # Get the labeled pfiles that are -1/1 for the label
-        labeled_train_files, labeled_y = zip(*[(pfile, y_train[i][label]) for i, pfile in enumerate(X_train) if y_train[i][label] == 1 or y_train[i][label] == -1])
-        labeled_y = list(labeled_y)
-        for i in range(len(labeled_y)):
-            if labeled_y[i] < 0:
-                labeled_y[i] = 0
+            # Get each patient's files into one big string, and make a list of them
+            cat_train_files = concat_entries(labeled_train_files)
+            cat_test_files  = concat_entries(X_test)
 
-        # Get each patient's files into one big string, and make a list of them
-        cat_train_files = concat_entries(labeled_train_files)
-        cat_test_files  = concat_entries(X_test)
+            cat_pfiles = concat_entries(pfiles)
+            
+            # Fit the tfidf
+            tfidf.fit(cat_pfiles)
+            tfs = tfidf.transform(cat_train_files).toarray()
 
-        cat_pfiles = concat_entries(pfiles)
-        
-        # Fit the tfidf
-        tfidf.fit(cat_pfiles)
-        tfs = tfidf.transform(cat_train_files).toarray()
-
-        c_range = 10.0 ** np.arange(-3, 3)
-        c_scores = [0 for _ in c_range]
-        
-        f_svc = open('svc_results.txt', "w+")
-        f_svc.write('label #: {}'.format(column_titles[label]))
-        for i, c_num in enumerate(c_range):
-            clf = SVC(C=c_num, kernel='rbf')
+            c_range = [1]
+            c_scores = [0 for _ in c_range]
+            
+            f_svc.write('label #: {}'.format(column_titles[label]))
+            clf = SVC(C=1, kernel='rbf')
             clf.fit(tfs, labeled_y)
             
             test_labels = [y_test[k][label] for k in range(len(y_test))]
@@ -89,29 +88,39 @@ def main():
                     
             results = clf.predict(test_tfs)
 
-            score = {}
-            score['C'] = c_num
-            score['accuracy'] = clf.score(test_tfs, test_labels)
-            score['f1']  = f1_score(test_labels, results)
-            score['auroc'] = roc_auc_score(test_labels, results, average="macro")
-            score['precision'] = precision_score(test_labels, results)
-            score['sensitivity'] = recall_score(test_labels, results)
-            score['specificity'] = (lambda tn, fp, fn, tp: tn / float(tn+fp))(*(confusion_matrix(test_labels, results).ravel()))
-            
-            f_svc.write("C: {}\n".format(c_num))
-            f_svc.write("accuracy: {}\n".format(score['accuracy']))
-            f_svc.write("f1: {}\n".format(score['f1']))
-            f_svc.write("auroc: {}\n".format(score['auroc']))
-            f_svc.write("precision: {}\n".format(score['precision']))
-            f_svc.write("sensitivity: {}\n".format(score['sensitivity']))
-            f_svc.write("specificity: {}\n\n".format(score['specificity']))
-            
-            c_scores[i] = score
+            totals['C'] = 1
+            totals['accuracy'][label] += clf.score(test_tfs, test_labels)
+            totals['f1'][label]  += f1_score(test_labels, results)
+            totals['auroc'][label] += roc_auc_score(test_labels, results, average="macro")
+            totals['precision'][label] += precision_score(test_labels, results)
+            totals['sensitivity'][label] += recall_score(test_labels, results)
+            totals['specificity'][label] += (lambda tn, fp, fn, tp: tn / float(tn+fp))(*(confusion_matrix(test_labels, results).ravel()))
 
-            print 'done with iteration'
+    print("C: 1\n")
 
-        f_svc.close()
-        label_scores[label]['svm_scores'] = c_scores
+    totals['accuracy']  = [x/trials for x in totals['accuracy']]
+    totals['f1'] = [x/trials for x in totals['f1']]
+    totals['auroc'] = [x/trials for x in totals['auroc']]
+    totals['precision'] = [x/trials for x in totals['precision']]
+    totals['sensitivity'] = [x/trials for x in totals['sensitivity']]
+    totals['specificity']  = [x/trials for x in totals['specificity']]
+
+    print("accuracy: {}\n".format(totals['accuracy']))
+    print("f1: {}\n".format(totals['f1']))
+    print("auroc: {}\n".format(totals['auroc']))
+    print("precision: {}\n".format(totals['precision']))
+    print("sensitivity: {}\n".format(totals['sensitivity']))
+    print("specificity: {}\n\n".format(totals['specificity']))
+        
+    f_svc.write("C: {}\n".format(1))
+    f_svc.write("accuracy: {}\n".format(totals['accuracy']))
+    f_svc.write("f1: {}\n".format(totals['f1']))
+    f_svc.write("auroc: {}\n".format(totals['auroc']))
+    f_svc.write("precision: {}\n".format(totals['precision']))
+    f_svc.write("sensitivity: {}\n".format(totals['sensitivity']))
+    f_svc.write("specificity: {}\n\n".format(totals['specificity']))
+        
+    f_svc.close()
 
 if __name__ == "__main__":
     main()
