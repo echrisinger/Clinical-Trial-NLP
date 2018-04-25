@@ -39,7 +39,7 @@ def group_entries(raw_words):
     patient_files = []
     for f_words in raw_words:
         entries = f_words.split(config.FILE_DELIMITER)
-        p_file = PatientFile(raw_words, entries=[Entry(text) for text in entries[:-1]])
+        p_file = PatientFile(f_words, entries=[Entry(text) for text in entries[:-1]])
         patient_files.append(p_file)
     return patient_files
 
